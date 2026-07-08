@@ -1,69 +1,128 @@
 # Bingo Generator
 
-Herramientas en Python para generar cartones de bingo musical y simular partidas a partir de una playlist.
+Proyecto para preparar bingos musicales de principio a fin:
+
+1. Exportar una playlist de Spotify en CSV (Exportify).
+2. Convertir ese CSV a TXT con un titulo por linea.
+3. Generar cartones optimizados en CSV.
+4. Simular partidas en consola.
+5. Renderizar cartones visuales en Google Sheets para imprimir.
 
 ## Estructura
 
-- `src/`: lógica principal del proyecto.
-- `data/inputs/`: listas TXT de canciones.
-- `data/outputs/`: CSV generados o ejemplos de cartones.
-- `generador_csv_cartones.py` y `simulador_partidas.py`: lanzadores en la raíz para no romper el uso actual.
+- [src/](src/): logica principal en Python.
+- [data/inputs/](data/inputs/): playlists en TXT y CSV de entrada.
+- [data/outputs/](data/outputs/): cartones generados en CSV.
+- [google-sheets/generadorCartonesBingo.gs](google-sheets/generadorCartonesBingo.gs): script de Apps Script para dibujar cartones visuales.
+- [menu_bingo.py](menu_bingo.py): menu interactivo para gestionar todo el flujo Python.
+- [bingo_config.json](bingo_config.json): configuracion persistente del menu interactivo.
+- [exportify_to_txt.py](exportify_to_txt.py), [generador_csv_cartones.py](generador_csv_cartones.py), [simulador_partidas.py](simulador_partidas.py): lanzadores directos en la raiz.
 
 ## Requisitos
 
 - Python 3.10 o superior.
-- No necesita librerías externas.
+- Sin dependencias externas.
 
-## Uso rápido
+## Flujo Completo
 
-Generar cartones:
+### Opcion recomendada: menu interactivo
 
 ```bash
-python generador_csv_cartones.py --entrada data/inputs/canciones1_115.txt --salida data/outputs/cartones_optimizados1_115.csv
+python menu_bingo.py
 ```
 
-Simular una partida:
+Desde ahi puedes:
+
+1. Ejecutar flujo completo (Exportify -> Cartones -> Simulacion).
+2. Convertir CSV de Exportify a TXT.
+3. Generar cartones.
+4. Simular partida.
+5. Ver/editar/restablecer configuracion.
+
+El menu guarda los defaults en [bingo_config.json](bingo_config.json).
+
+### 1) Exportar playlist desde Spotify
+
+Usa Exportify: [https://exportify.net/](https://exportify.net/)
+
+Guarda el CSV en [data/inputs/](data/inputs/) por ejemplo como `BINGO_RONDA_1.csv`.
+
+### 2) Convertir CSV de Exportify a TXT
+
+Comando recomendado:
 
 ```bash
-python simulador_partidas.py --cartones data/outputs/cartones_optimizados2_105.csv --playlist data/inputs/canciones2_115.txt
+python exportify_to_txt.py --entrada-csv "data/inputs/BINGO_RONDA_1.csv" --salida-txt "data/inputs/canciones_ronda_1.txt" --unicos
 ```
 
-## Opciones disponibles
+Este script extrae la columna `Track Name` y genera un TXT con un titulo por linea.
 
-### Generador
+### 3) Generar cartones optimizados
 
 ```bash
+python generador_csv_cartones.py --entrada data/inputs/canciones_ronda_1.txt --salida data/outputs/cartones_ronda_1.csv --num-cartones 100 --canciones-por-carton 12 --max-coincidencias 3
+```
+
+### 4) Simular la partida
+
+```bash
+python simulador_partidas.py --cartones data/outputs/cartones_ronda_1.csv --playlist data/inputs/canciones_ronda_1.txt --canciones-por-carton 12
+```
+
+### 5) Pasar los cartones a formato visual (Google Sheets)
+
+Puedes usar la siguiente plantilla de Google Sheets:
+👉 [CONSEGUIR PLANTILLA DE GOOGLE SHEETS](https://docs.google.com/spreadsheets/d/1ieuiieDqshKL-2PPijxsN29i8oCbGnWKbDt6Y-lMgmg/copy)
+
+Pasos:
+
+1. Abre tu copia de la plantilla.
+2. Ve a la hoja Cartones texto.
+3. Importa el CSV generado en Python (Archivo > Importar) y elige Reemplazar hoja actual.
+4. Ejecuta el menu Gestion Cartones Bingo > Generar Cartones Visuales.
+
+Si quieres mantener el script tambien versionado localmente, esta en [google-sheets/generadorCartonesBingo.gs](google-sheets/generadorCartonesBingo.gs).
+
+Si en tu copia no aparece el menu:
+
+1. Abre Extensiones > Apps Script.
+2. Pega el contenido de [google-sheets/generadorCartonesBingo.gs](google-sheets/generadorCartonesBingo.gs) en el editor.
+3. Guarda, recarga la hoja y vuelve a ejecutar desde el menu.
+
+## Comandos Rapidos
+
+```bash
+python menu_bingo.py
+python exportify_to_txt.py --help
 python generador_csv_cartones.py --help
-```
-
-Parámetros principales:
-
-- `--entrada`: archivo TXT con una canción por línea.
-- `--salida`: archivo CSV de salida.
-- `--num-cartones`: cantidad de cartones a generar.
-- `--canciones-por-carton`: número de canciones por cartón.
-- `--max-coincidencias`: máximo de canciones compartidas entre cartones.
-- `--seed`: semilla opcional para reproducibilidad.
-
-### Simulador
-
-```bash
 python simulador_partidas.py --help
 ```
 
-Parámetros principales:
+## Opciones Principales
 
-- `--cartones`: CSV con los cartones generados.
-- `--playlist`: TXT con la lista de canciones.
-- `--canciones-por-carton`: número de canciones esperadas por cartón.
+### exportify_to_txt.py
 
-## Flujo recomendado
+- `--entrada-csv`: ruta del CSV exportado.
+- `--salida-txt`: ruta del TXT de salida.
+- `--columna`: columna de donde leer el titulo (por defecto `Track Name`).
+- `--unicos`: elimina repetidos conservando orden.
 
-1. Coloca tus playlists en `data/inputs/`.
-2. Genera los cartones en `data/outputs/`.
-3. Usa el CSV resultante en el simulador para probar una partida.
+### generador_csv_cartones.py
+
+- `--entrada`: TXT con una cancion por linea.
+- `--salida`: CSV de cartones.
+- `--num-cartones`: cantidad de cartones.
+- `--canciones-por-carton`: canciones por carton.
+- `--max-coincidencias`: limite de coincidencias entre cartones.
+- `--seed`: semilla opcional para reproducibilidad.
+
+### simulador_partidas.py
+
+- `--cartones`: CSV con cartones.
+- `--playlist`: TXT con canciones a sonar.
+- `--canciones-por-carton`: canciones esperadas por carton.
 
 ## Notas
 
-- El generador intenta mantener una separación razonable entre cartones, pero si los parámetros son muy exigentes puede devolver menos cartones de los pedidos.
-- Si quieres publicar esto como proyecto reutilizable, el siguiente paso lógico sería añadir una licencia abierta como MIT o Apache 2.0.
+- Si la config del generador es muy exigente, puede devolver menos cartones de los pedidos.
+- Recomendacion para publicar el repo: anadir licencia MIT o Apache-2.0.
