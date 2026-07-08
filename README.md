@@ -15,7 +15,7 @@ Proyecto para preparar bingos musicales de principio a fin:
 - [data/outputs/](data/outputs/): cartones generados en CSV.
 - [google-sheets/generadorCartonesBingo.gs](google-sheets/generadorCartonesBingo.gs): script de Apps Script para dibujar cartones visuales.
 - [menu_bingo.py](menu_bingo.py): menu interactivo para gestionar todo el flujo Python.
-- [bingo_config.json](bingo_config.json): configuracion persistente del menu interactivo.
+- [bingo_config.example.json](bingo_config.example.json): plantilla de configuracion del menu interactivo.
 - [exportify_to_txt.py](exportify_to_txt.py), [generador_csv_cartones.py](generador_csv_cartones.py), [simulador_partidas.py](simulador_partidas.py): lanzadores directos en la raiz.
 
 ## Requisitos
@@ -39,7 +39,8 @@ Desde ahi puedes:
 4. Simular partida.
 5. Ver/editar/restablecer configuracion.
 
-El menu guarda los defaults en [bingo_config.json](bingo_config.json).
+El menu guarda tu configuracion local en `bingo_config.json` (archivo ignorado por Git).
+La plantilla versionada del repo esta en [bingo_config.example.json](bingo_config.example.json).
 
 ### 1) Exportar playlist desde Spotify
 

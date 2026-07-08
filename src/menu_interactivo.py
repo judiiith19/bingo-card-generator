@@ -25,19 +25,27 @@ from src.simulador_partidas import (
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / 'bingo_config.json'
 
+
+def _a_ruta_relativa_proyecto(path_value):
+    path_obj = Path(path_value)
+    try:
+        return str(path_obj.relative_to(PROJECT_ROOT)).replace('\\', '/')
+    except ValueError:
+        return str(path_obj).replace('\\', '/')
+
 DEFAULT_CONFIG = {
-    'exportify_input_csv': str(DEFAULT_EXPORTIFY_INPUT),
-    'exportify_output_txt': str(DEFAULT_EXPORTIFY_OUTPUT),
+    'exportify_input_csv': _a_ruta_relativa_proyecto(DEFAULT_EXPORTIFY_INPUT),
+    'exportify_output_txt': _a_ruta_relativa_proyecto(DEFAULT_EXPORTIFY_OUTPUT),
     'exportify_column': 'Track Name',
     'exportify_unique': True,
-    'generator_input_txt': str(DEFAULT_CANCIONES_INPUT),
-    'generator_output_csv': str(DEFAULT_CARTONES_OUTPUT),
+    'generator_input_txt': _a_ruta_relativa_proyecto(DEFAULT_CANCIONES_INPUT),
+    'generator_output_csv': _a_ruta_relativa_proyecto(DEFAULT_CARTONES_OUTPUT),
     'generator_num_cartones': 150,
     'generator_canciones_por_carton': 12,
     'generator_max_coincidencias': 3,
     'generator_seed': '',
-    'simulator_cartones_csv': str(DEFAULT_SIM_CARTONES),
-    'simulator_playlist_txt': str(DEFAULT_SIM_PLAYLIST),
+    'simulator_cartones_csv': _a_ruta_relativa_proyecto(DEFAULT_SIM_CARTONES),
+    'simulator_playlist_txt': _a_ruta_relativa_proyecto(DEFAULT_SIM_PLAYLIST),
     'simulator_canciones_por_carton': 12,
 }
 
