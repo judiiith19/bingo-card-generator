@@ -49,6 +49,12 @@ def generar_cartones_optimizados(canciones, num_cartones, canciones_por_carton=1
 
 
 def exportar_a_csv(cartones, archivo):
+    if not cartones:
+        raise ValueError(
+            'No se pudo exportar porque no se generó ningún cartón. '
+            'Prueba con menos cartones, más canciones por playlist o mayor max_coincidencias.'
+        )
+
     with open(archivo, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([f'Canción {i + 1}' for i in range(len(cartones[0]))])

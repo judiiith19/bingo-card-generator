@@ -31,6 +31,15 @@ Proyecto para preparar bingos musicales de principio a fin:
 python menu_bingo.py
 ```
 
+Tambien puedes usar el lanzador con flags:
+
+```bash
+python menu_bingo.py --help
+python menu_bingo.py --version
+python menu_bingo.py --config bingo_config.json
+python menu_bingo.py --run-full
+```
+
 Desde ahi puedes:
 
 1. Ejecutar flujo completo (Exportify -> Cartones -> Simulacion).
@@ -41,6 +50,8 @@ Desde ahi puedes:
 
 El menu guarda tu configuracion local en `bingo_config.json` (archivo ignorado por Git).
 La plantilla versionada del repo esta en [bingo_config.example.json](bingo_config.example.json).
+
+Si el `bingo_config.json` se corrompe, el menu crea un backup `.bak` automaticamente y regenera configuracion valida.
 
 ### 1) Exportar playlist desde Spotify
 
@@ -97,6 +108,18 @@ python menu_bingo.py
 python exportify_to_txt.py --help
 python generador_csv_cartones.py --help
 python simulador_partidas.py --help
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+## Calidad
+
+- El repo incluye tests unitarios en [tests/](tests/).
+- CI en GitHub Actions: [.github/workflows/ci.yml](.github/workflows/ci.yml).
+- Verificacion local recomendada:
+
+```bash
+python -m py_compile menu_bingo.py src/exportify_to_txt.py src/generador_csv_cartones.py src/simulador_partidas.py src/menu_interactivo.py
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 ## Opciones Principales

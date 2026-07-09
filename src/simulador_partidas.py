@@ -26,7 +26,8 @@ def cargar_playlist(archivo_txt):
 def contar_cartones_a_punto(cartones, canciones_por_carton=12):
     a_3 = a_2 = a_1 = 0
     for carton in cartones:
-        faltan = canciones_por_carton - len(carton['marcadas'])
+        objetivo = len(carton['canciones']) if carton.get('canciones') else canciones_por_carton
+        faltan = objetivo - len(carton['marcadas'])
         if faltan == 3:
             a_3 += 1
         elif faltan == 2:

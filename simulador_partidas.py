@@ -1,5 +1,3 @@
-import argparse
-import csv
 from src.simulador_partidas import main
 
 

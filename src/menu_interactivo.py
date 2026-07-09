@@ -1,4 +1,5 @@
 import json
+from json import JSONDecodeError
 from pathlib import Path
 
 from src.exportify_to_txt import (
@@ -23,7 +24,7 @@ from src.simulador_partidas import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = PROJECT_ROOT / 'bingo_config.json'
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / 'bingo_config.json'
 
 
 def _a_ruta_relativa_proyecto(path_value):
@@ -50,22 +51,55 @@ DEFAULT_CONFIG = {
 }
 
 
-def _cargar_config():
-    if not CONFIG_PATH.exists():
-        _guardar_config(DEFAULT_CONFIG)
+def _ruta_relativa(path_value):
+    path_obj = Path(path_value)
+    if not path_obj.is_absolute():
+        return str(path_obj).replace('\\', '/')
+
+    try:
+        return str(path_obj.relative_to(PROJECT_ROOT)).replace('\\', '/')
+    except ValueError:
+        return str(path_obj).replace('\\', '/')
+
+
+def _normalizar_config(config):
+    normalizada = dict(DEFAULT_CONFIG)
+    normalizada.update(config)
+
+    for key in (
+        'exportify_input_csv',
+        'exportify_output_txt',
+        'generator_input_txt',
+        'generator_output_csv',
+        'simulator_cartones_csv',
+        'simulator_playlist_txt',
+    ):
+        normalizada[key] = _ruta_relativa(normalizada[key])
+
+    return normalizada
+
+
+def _cargar_config(config_path):
+    if not config_path.exists():
+        _guardar_config(DEFAULT_CONFIG, config_path)
         return dict(DEFAULT_CONFIG)
 
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        config = json.load(f)
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except JSONDecodeError:
+        backup_path = config_path.with_suffix(config_path.suffix + '.bak')
+        config_path.replace(backup_path)
+        _guardar_config(DEFAULT_CONFIG, config_path)
+        print(f'Configuración inválida. Se creó backup en: {backup_path}')
+        return dict(DEFAULT_CONFIG)
 
-    merged = dict(DEFAULT_CONFIG)
-    merged.update(config)
-    return merged
+    return _normalizar_config(config)
 
 
-def _guardar_config(config):
-    with open(CONFIG_PATH, 'w', encoding='utf-8', newline='\n') as f:
-        json.dump(config, f, indent=2, ensure_ascii=False)
+def _guardar_config(config, config_path):
+    with open(config_path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(_normalizar_config(config), f, indent=2, ensure_ascii=False)
         f.write('\n')
 
 
@@ -133,14 +167,14 @@ def _pedir_seed(default=''):
             print('Valor no valido. Debe ser un numero entero o vacio.')
 
 
-def _confirmar_guardar_valores(config, cambios):
+def _confirmar_guardar_valores(config, cambios, config_path):
     if _pedir_bool('Guardar estos valores como configuracion por defecto', False):
         config.update(cambios)
-        _guardar_config(config)
-        print(f'Configuracion guardada en: {CONFIG_PATH}')
+        _guardar_config(config, config_path)
+        print(f'Configuracion guardada en: {config_path}')
 
 
-def _convertir_exportify_a_txt(config, interactivo=True):
+def _convertir_exportify_a_txt(config, config_path, interactivo=True):
     print('\n=== Convertir CSV de Exportify a TXT ===')
 
     if interactivo:
@@ -169,17 +203,18 @@ def _convertir_exportify_a_txt(config, interactivo=True):
         _confirmar_guardar_valores(
             config,
             {
-                'exportify_input_csv': str(entrada),
-                'exportify_output_txt': str(salida),
+                'exportify_input_csv': _ruta_relativa(entrada),
+                'exportify_output_txt': _ruta_relativa(salida),
                 'exportify_column': columna,
                 'exportify_unique': bool(unicos),
             },
+            config_path,
         )
 
     return salida
 
 
-def _generar_cartones(config, interactivo=True, entrada_forzada=None):
+def _generar_cartones(config, config_path, interactivo=True, entrada_forzada=None):
     print('\n=== Generar cartones ===')
 
     if interactivo:
@@ -230,19 +265,20 @@ def _generar_cartones(config, interactivo=True, entrada_forzada=None):
         _confirmar_guardar_valores(
             config,
             {
-                'generator_input_txt': str(entrada),
-                'generator_output_csv': str(salida),
+                'generator_input_txt': _ruta_relativa(entrada),
+                'generator_output_csv': _ruta_relativa(salida),
                 'generator_num_cartones': int(num_cartones),
                 'generator_canciones_por_carton': int(canciones_por_carton),
                 'generator_max_coincidencias': int(max_coincidencias),
                 'generator_seed': seed_guardar,
             },
+            config_path,
         )
 
     return salida
 
 
-def _simular_partida(config, interactivo=True, cartones_forzados=None, playlist_forzada=None):
+def _simular_partida(config, config_path, interactivo=True, cartones_forzados=None, playlist_forzada=None):
     print('\n=== Simular partida ===')
 
     if interactivo:
@@ -279,14 +315,15 @@ def _simular_partida(config, interactivo=True, cartones_forzados=None, playlist_
         _confirmar_guardar_valores(
             config,
             {
-                'simulator_cartones_csv': str(cartones_csv),
-                'simulator_playlist_txt': str(playlist_txt_path),
+                'simulator_cartones_csv': _ruta_relativa(cartones_csv),
+                'simulator_playlist_txt': _ruta_relativa(playlist_txt_path),
                 'simulator_canciones_por_carton': int(canciones_por_carton),
             },
+            config_path,
         )
 
 
-def _flujo_completo(config):
+def _flujo_completo(config, config_path):
     print('\n=== Flujo completo: Exportify -> Cartones -> Simulacion ===')
     print('Se usara la configuracion guardada. Puedes editarla desde el menu.')
     _mostrar_config(config)
@@ -295,27 +332,28 @@ def _flujo_completo(config):
         print('Flujo cancelado.')
         return
 
-    salida_txt = _convertir_exportify_a_txt(config, interactivo=False)
-    salida_cartones = _generar_cartones(config, interactivo=False, entrada_forzada=salida_txt)
+    salida_txt = _convertir_exportify_a_txt(config, config_path, interactivo=False)
+    salida_cartones = _generar_cartones(config, config_path, interactivo=False, entrada_forzada=salida_txt)
     _simular_partida(
         config,
+        config_path,
         interactivo=False,
         cartones_forzados=salida_cartones,
         playlist_forzada=salida_txt,
     )
 
 
-def _editar_configuracion(config):
+def _editar_configuracion(config, config_path):
     print('\n=== Editar configuracion ===')
     cambios = {}
 
-    cambios['exportify_input_csv'] = str(_resolver_path(_pedir_texto('Exportify CSV entrada', config['exportify_input_csv'])))
-    cambios['exportify_output_txt'] = str(_resolver_path(_pedir_texto('Exportify TXT salida', config['exportify_output_txt'])))
+    cambios['exportify_input_csv'] = _ruta_relativa(_resolver_path(_pedir_texto('Exportify CSV entrada', config['exportify_input_csv'])))
+    cambios['exportify_output_txt'] = _ruta_relativa(_resolver_path(_pedir_texto('Exportify TXT salida', config['exportify_output_txt'])))
     cambios['exportify_column'] = _pedir_texto('Columna de titulo', config['exportify_column'])
     cambios['exportify_unique'] = _pedir_bool('Eliminar duplicados en Exportify', bool(config['exportify_unique']))
 
-    cambios['generator_input_txt'] = str(_resolver_path(_pedir_texto('Generador TXT entrada', config['generator_input_txt'])))
-    cambios['generator_output_csv'] = str(_resolver_path(_pedir_texto('Generador CSV salida', config['generator_output_csv'])))
+    cambios['generator_input_txt'] = _ruta_relativa(_resolver_path(_pedir_texto('Generador TXT entrada', config['generator_input_txt'])))
+    cambios['generator_output_csv'] = _ruta_relativa(_resolver_path(_pedir_texto('Generador CSV salida', config['generator_output_csv'])))
     cambios['generator_num_cartones'] = _pedir_entero('Generador cantidad cartones', int(config['generator_num_cartones']))
     cambios['generator_canciones_por_carton'] = _pedir_entero(
         'Generador canciones por carton',
@@ -328,24 +366,24 @@ def _editar_configuracion(config):
     _, seed_guardar = _pedir_seed(str(config.get('generator_seed', '')))
     cambios['generator_seed'] = seed_guardar
 
-    cambios['simulator_cartones_csv'] = str(_resolver_path(_pedir_texto('Simulador CSV cartones', config['simulator_cartones_csv'])))
-    cambios['simulator_playlist_txt'] = str(_resolver_path(_pedir_texto('Simulador TXT playlist', config['simulator_playlist_txt'])))
+    cambios['simulator_cartones_csv'] = _ruta_relativa(_resolver_path(_pedir_texto('Simulador CSV cartones', config['simulator_cartones_csv'])))
+    cambios['simulator_playlist_txt'] = _ruta_relativa(_resolver_path(_pedir_texto('Simulador TXT playlist', config['simulator_playlist_txt'])))
     cambios['simulator_canciones_por_carton'] = _pedir_entero(
         'Simulador canciones por carton',
         int(config['simulator_canciones_por_carton']),
     )
 
     config.update(cambios)
-    _guardar_config(config)
-    print(f'Configuracion guardada en: {CONFIG_PATH}')
+    _guardar_config(config, config_path)
+    print(f'Configuracion guardada en: {config_path}')
 
 
-def _restablecer_configuracion(config):
+def _restablecer_configuracion(config, config_path):
     if _pedir_bool('Restablecer configuracion por defecto', False):
         config.clear()
         config.update(DEFAULT_CONFIG)
-        _guardar_config(config)
-        print(f'Configuracion restablecida en: {CONFIG_PATH}')
+        _guardar_config(config, config_path)
+        print(f'Configuracion restablecida en: {config_path}')
 
 
 def _mostrar_menu():
@@ -362,8 +400,16 @@ def _mostrar_menu():
     print("8) Salir")
 
 
-def main():
-    config = _cargar_config()
+def main(config_path=None, run_full=False):
+    resolved_config_path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+    if not resolved_config_path.is_absolute():
+        resolved_config_path = PROJECT_ROOT / resolved_config_path
+
+    config = _cargar_config(resolved_config_path)
+
+    if run_full:
+        _flujo_completo(config, resolved_config_path)
+        return
 
     while True:
         _mostrar_menu()
@@ -371,34 +417,34 @@ def main():
 
         if opcion == "1":
             try:
-                _flujo_completo(config)
+                _flujo_completo(config, resolved_config_path)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "2":
             try:
-                _convertir_exportify_a_txt(config, interactivo=True)
+                _convertir_exportify_a_txt(config, resolved_config_path, interactivo=True)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "3":
             try:
-                _generar_cartones(config, interactivo=True)
+                _generar_cartones(config, resolved_config_path, interactivo=True)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "4":
             try:
-                _simular_partida(config, interactivo=True)
+                _simular_partida(config, resolved_config_path, interactivo=True)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "5":
             _mostrar_config(config)
         elif opcion == "6":
             try:
-                _editar_configuracion(config)
+                _editar_configuracion(config, resolved_config_path)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "7":
             try:
-                _restablecer_configuracion(config)
+                _restablecer_configuracion(config, resolved_config_path)
             except Exception as exc:
                 print(f"Error: {exc}")
         elif opcion == "8":
