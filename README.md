@@ -149,7 +149,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 ## Notas
 
 - Si la config del generador es muy exigente, puede devolver menos cartones de los pedidos.
-- Recomendacion para publicar el repo: anadir licencia MIT o Apache-2.0.
+- Licencia del proyecto: MIT (ver archivo LICENSE).
 
 ## Presets Recomendados
 
@@ -164,15 +164,15 @@ Para rondas grandes (150 cartones o mas), empieza por el preset conservador.
 ## Troubleshooting
 
 - Error `No se pudo exportar porque no se generó ningún cartón`:
-	- Reduce `--num-cartones`.
-	- Sube `--max-coincidencias`.
-	- Usa una playlist con mas canciones unicas.
+  - Reduce `--num-cartones`.
+  - Sube `--max-coincidencias`.
+  - Usa una playlist con mas canciones unicas.
 - El menu no arranca por `bingo_config.json` invalido:
-	- Se crea un backup `.bak` automatico.
-	- Revisa el backup y vuelve a lanzar `python menu_bingo.py`.
+  - Se crea un backup `.bak` automatico.
+  - Revisa el backup y vuelve a lanzar `python menu_bingo.py`.
 - `menu_bingo.py --help` no funciona:
-	- Verifica que ejecutas desde la raiz del repo.
-	- Comprueba sintaxis con `python -m py_compile menu_bingo.py src/menu_interactivo.py`.
+  - Verifica que ejecutas desde la raiz del repo.
+  - Comprueba sintaxis con `python -m py_compile menu_bingo.py src/menu_interactivo.py`.
 - El simulador termina demasiado pronto:
-	- Incrementa `--canciones-por-carton`.
-	- Reduce `--max-coincidencias` al generar cartones.
+  - Incrementa `--canciones-por-carton`.
+  - Reduce `--max-coincidencias` al generar cartones.
