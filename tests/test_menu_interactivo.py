@@ -17,10 +17,12 @@ class TestMenuInteractivoConfig(unittest.TestCase):
             backup = Path(str(config_path) + '.bak')
             self.assertTrue(backup.exists())
             self.assertIn('exportify_input_csv', config)
+            self.assertIn('simulator_canciones_por_linea', config)
 
             with open(config_path, 'r', encoding='utf-8') as f:
                 reparado = json.load(f)
             self.assertIn('generator_output_csv', reparado)
+            self.assertIn('simulator_canciones_por_linea', reparado)
 
 
 if __name__ == '__main__':

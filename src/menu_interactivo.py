@@ -45,9 +45,15 @@ DEFAULT_CONFIG = {
     'generator_canciones_por_carton': 12,
     'generator_max_coincidencias': 3,
     'generator_seed': '',
+    'generator_playlist_referencia_txt': '',
+    'generator_canciones_por_linea': 4,
+    'generator_intentos_optimizacion': 1,
+    'generator_peso_linea_simultanea': 10,
+    'generator_peso_bingo_simultaneo': 1000,
     'simulator_cartones_csv': _a_ruta_relativa_proyecto(DEFAULT_SIM_CARTONES),
     'simulator_playlist_txt': _a_ruta_relativa_proyecto(DEFAULT_SIM_PLAYLIST),
     'simulator_canciones_por_carton': 12,
+    'simulator_canciones_por_linea': 4,
 }
 
 
@@ -71,10 +77,11 @@ def _normalizar_config(config):
         'exportify_output_txt',
         'generator_input_txt',
         'generator_output_csv',
+        'generator_playlist_referencia_txt',
         'simulator_cartones_csv',
         'simulator_playlist_txt',
     ):
-        normalizada[key] = _ruta_relativa(normalizada[key])
+        normalizada[key] = _ruta_relativa(normalizada[key]) if normalizada[key] else ''
 
     return normalizada
 
@@ -233,6 +240,28 @@ def _generar_cartones(config, config_path, interactivo=True, entrada_forzada=Non
             int(config['generator_max_coincidencias']),
         )
         seed, seed_guardar = _pedir_seed(str(config.get('generator_seed', '')))
+        playlist_referencia_txt = _pedir_texto(
+            'Ruta TXT playlist referencia (vacio para desactivar optimizacion)',
+            config.get('generator_playlist_referencia_txt', ''),
+        )
+        canciones_por_linea = _pedir_entero(
+            'Canciones para linea (optimizacion)',
+            int(config.get('generator_canciones_por_linea', 4)),
+        )
+        intentos_optimizacion = _pedir_entero(
+            'Intentos de optimizacion',
+            int(config.get('generator_intentos_optimizacion', 1)),
+        )
+        peso_linea_simultanea = _pedir_entero(
+            'Peso linea simultanea',
+            int(config.get('generator_peso_linea_simultanea', 10)),
+            minimo=0,
+        )
+        peso_bingo_simultaneo = _pedir_entero(
+            'Peso bingo simultaneo',
+            int(config.get('generator_peso_bingo_simultaneo', 1000)),
+            minimo=0,
+        )
     else:
         entrada_txt = str(entrada_forzada) if entrada_forzada else config['generator_input_txt']
         salida_txt = config['generator_output_csv']
@@ -242,20 +271,34 @@ def _generar_cartones(config, config_path, interactivo=True, entrada_forzada=Non
         raw_seed = str(config.get('generator_seed', '')).strip()
         seed = int(raw_seed) if raw_seed else None
         seed_guardar = raw_seed
+        playlist_referencia_txt = str(config.get('generator_playlist_referencia_txt', '')).strip()
+        canciones_por_linea = int(config.get('generator_canciones_por_linea', 4))
+        intentos_optimizacion = int(config.get('generator_intentos_optimizacion', 1))
+        peso_linea_simultanea = int(config.get('generator_peso_linea_simultanea', 10))
+        peso_bingo_simultaneo = int(config.get('generator_peso_bingo_simultaneo', 1000))
 
     entrada = _resolver_path(entrada_txt)
     salida = _resolver_path(salida_txt)
+    playlist_referencia_path = _resolver_path(playlist_referencia_txt) if playlist_referencia_txt else None
 
     if not entrada.exists():
         raise FileNotFoundError(f"No existe el archivo de entrada: {entrada}")
+    if playlist_referencia_path and not playlist_referencia_path.exists():
+        raise FileNotFoundError(f"No existe la playlist de referencia: {playlist_referencia_path}")
 
     canciones = cargar_canciones(entrada)
+    playlist_referencia = cargar_canciones(playlist_referencia_path) if playlist_referencia_path else None
     cartones = generar_cartones_optimizados(
         canciones,
         num_cartones=num_cartones,
         canciones_por_carton=canciones_por_carton,
         max_coincidencias=max_coincidencias,
         seed=seed,
+        playlist_referencia=playlist_referencia,
+        canciones_por_linea=canciones_por_linea,
+        intentos_optimizacion=intentos_optimizacion,
+        peso_linea_simultanea=peso_linea_simultanea,
+        peso_bingo_simultaneo=peso_bingo_simultaneo,
     )
     salida.parent.mkdir(parents=True, exist_ok=True)
     exportar_a_csv(cartones, salida)
@@ -271,6 +314,11 @@ def _generar_cartones(config, config_path, interactivo=True, entrada_forzada=Non
                 'generator_canciones_por_carton': int(canciones_por_carton),
                 'generator_max_coincidencias': int(max_coincidencias),
                 'generator_seed': seed_guardar,
+                'generator_playlist_referencia_txt': _ruta_relativa(playlist_referencia_path) if playlist_referencia_path else '',
+                'generator_canciones_por_linea': int(canciones_por_linea),
+                'generator_intentos_optimizacion': int(intentos_optimizacion),
+                'generator_peso_linea_simultanea': int(peso_linea_simultanea),
+                'generator_peso_bingo_simultaneo': int(peso_bingo_simultaneo),
             },
             config_path,
         )
@@ -294,10 +342,15 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
             'Canciones por carton',
             int(config['simulator_canciones_por_carton']),
         )
+        canciones_por_linea = _pedir_entero(
+            'Canciones para linea',
+            int(config['simulator_canciones_por_linea']),
+        )
     else:
         cartones_txt = str(cartones_forzados) if cartones_forzados else config['simulator_cartones_csv']
         playlist_txt = str(playlist_forzada) if playlist_forzada else config['simulator_playlist_txt']
         canciones_por_carton = int(config['simulator_canciones_por_carton'])
+        canciones_por_linea = int(config['simulator_canciones_por_linea'])
 
     cartones_csv = _resolver_path(cartones_txt)
     playlist_txt_path = _resolver_path(playlist_txt)
@@ -309,7 +362,12 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
 
     cartones = cargar_cartones(cartones_csv)
     playlist = cargar_playlist(playlist_txt_path)
-    simular_bingo(cartones, playlist, canciones_por_carton=canciones_por_carton)
+    simular_bingo(
+        cartones,
+        playlist,
+        canciones_por_carton=canciones_por_carton,
+        canciones_por_linea=canciones_por_linea,
+    )
 
     if interactivo:
         _confirmar_guardar_valores(
@@ -318,6 +376,7 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
                 'simulator_cartones_csv': _ruta_relativa(cartones_csv),
                 'simulator_playlist_txt': _ruta_relativa(playlist_txt_path),
                 'simulator_canciones_por_carton': int(canciones_por_carton),
+                'simulator_canciones_por_linea': int(canciones_por_linea),
             },
             config_path,
         )
@@ -365,12 +424,36 @@ def _editar_configuracion(config, config_path):
     )
     _, seed_guardar = _pedir_seed(str(config.get('generator_seed', '')))
     cambios['generator_seed'] = seed_guardar
+    playlist_referencia_edit = _pedir_texto('Generador playlist referencia (vacio=off)', config.get('generator_playlist_referencia_txt', ''))
+    cambios['generator_playlist_referencia_txt'] = _ruta_relativa(_resolver_path(playlist_referencia_edit)) if playlist_referencia_edit else ''
+    cambios['generator_canciones_por_linea'] = _pedir_entero(
+        'Generador canciones para linea (optimizacion)',
+        int(config.get('generator_canciones_por_linea', 4)),
+    )
+    cambios['generator_intentos_optimizacion'] = _pedir_entero(
+        'Generador intentos de optimizacion',
+        int(config.get('generator_intentos_optimizacion', 1)),
+    )
+    cambios['generator_peso_linea_simultanea'] = _pedir_entero(
+        'Generador peso linea simultanea',
+        int(config.get('generator_peso_linea_simultanea', 10)),
+        minimo=0,
+    )
+    cambios['generator_peso_bingo_simultaneo'] = _pedir_entero(
+        'Generador peso bingo simultaneo',
+        int(config.get('generator_peso_bingo_simultaneo', 1000)),
+        minimo=0,
+    )
 
     cambios['simulator_cartones_csv'] = _ruta_relativa(_resolver_path(_pedir_texto('Simulador CSV cartones', config['simulator_cartones_csv'])))
     cambios['simulator_playlist_txt'] = _ruta_relativa(_resolver_path(_pedir_texto('Simulador TXT playlist', config['simulator_playlist_txt'])))
     cambios['simulator_canciones_por_carton'] = _pedir_entero(
         'Simulador canciones por carton',
         int(config['simulator_canciones_por_carton']),
+    )
+    cambios['simulator_canciones_por_linea'] = _pedir_entero(
+        'Simulador canciones para linea',
+        int(config['simulator_canciones_por_linea']),
     )
 
     config.update(cambios)

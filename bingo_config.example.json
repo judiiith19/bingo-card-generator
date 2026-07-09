@@ -9,7 +9,13 @@
   "generator_canciones_por_carton": 12,
   "generator_max_coincidencias": 3,
   "generator_seed": "",
+  "generator_playlist_referencia_txt": "",
+  "generator_canciones_por_linea": 4,
+  "generator_intentos_optimizacion": 1,
+  "generator_peso_linea_simultanea": 10,
+  "generator_peso_bingo_simultaneo": 1000,
   "simulator_cartones_csv": "data/outputs/cartones_optimizados2_105.csv",
   "simulator_playlist_txt": "data/inputs/canciones2_115.txt",
-  "simulator_canciones_por_carton": 12
+  "simulator_canciones_por_carton": 12,
+  "simulator_canciones_por_linea": 4
 }
