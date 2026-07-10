@@ -17,5 +17,7 @@
   "simulator_cartones_csv": "data/outputs/cartones_optimizados2_105.csv",
   "simulator_playlist_txt": "data/inputs/canciones2_115.txt",
   "simulator_canciones_por_carton": 12,
-  "simulator_canciones_por_linea": 4
+  "simulator_canciones_por_linea": 4,
+  "simulator_guardar_log_txt": false,
+  "simulator_log_output_txt": "data/outputs/simulacion_partida.txt"
 }

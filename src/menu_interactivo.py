@@ -1,4 +1,6 @@
 import json
+import sys
+from contextlib import redirect_stdout
 from json import JSONDecodeError
 from pathlib import Path
 
@@ -25,6 +27,20 @@ from src.simulador_partidas import (
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / 'bingo_config.json'
+
+
+class _TeeOutput:
+    def __init__(self, *outputs):
+        self.outputs = outputs
+
+    def write(self, data):
+        for output in self.outputs:
+            output.write(data)
+        return len(data)
+
+    def flush(self):
+        for output in self.outputs:
+            output.flush()
 
 
 def _a_ruta_relativa_proyecto(path_value):
@@ -54,6 +70,8 @@ DEFAULT_CONFIG = {
     'simulator_playlist_txt': _a_ruta_relativa_proyecto(DEFAULT_SIM_PLAYLIST),
     'simulator_canciones_por_carton': 12,
     'simulator_canciones_por_linea': 4,
+    'simulator_guardar_log_txt': False,
+    'simulator_log_output_txt': 'data/outputs/simulacion_partida.txt',
 }
 
 
@@ -80,6 +98,7 @@ def _normalizar_config(config):
         'generator_playlist_referencia_txt',
         'simulator_cartones_csv',
         'simulator_playlist_txt',
+        'simulator_log_output_txt',
     ):
         normalizada[key] = _ruta_relativa(normalizada[key]) if normalizada[key] else ''
 
@@ -329,6 +348,9 @@ def _generar_cartones(config, config_path, interactivo=True, entrada_forzada=Non
 def _simular_partida(config, config_path, interactivo=True, cartones_forzados=None, playlist_forzada=None):
     print('\n=== Simular partida ===')
 
+    guardar_log_txt = False
+    ruta_log_txt = None
+
     if interactivo:
         cartones_txt = _pedir_texto(
             'Ruta CSV de cartones',
@@ -346,11 +368,27 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
             'Canciones para linea',
             int(config['simulator_canciones_por_linea']),
         )
+        guardar_log_txt = _pedir_bool(
+            'Guardar resultado de simulacion en TXT',
+            bool(config.get('simulator_guardar_log_txt', False)),
+        )
+        if guardar_log_txt:
+            ruta_log_txt = _resolver_path(
+                _pedir_texto(
+                    'Ruta TXT para guardar el resultado',
+                    config.get('simulator_log_output_txt', 'data/outputs/simulacion_partida.txt'),
+                )
+            )
     else:
         cartones_txt = str(cartones_forzados) if cartones_forzados else config['simulator_cartones_csv']
         playlist_txt = str(playlist_forzada) if playlist_forzada else config['simulator_playlist_txt']
         canciones_por_carton = int(config['simulator_canciones_por_carton'])
         canciones_por_linea = int(config['simulator_canciones_por_linea'])
+        guardar_log_txt = bool(config.get('simulator_guardar_log_txt', False))
+        if guardar_log_txt:
+            ruta_log_txt = _resolver_path(
+                config.get('simulator_log_output_txt', 'data/outputs/simulacion_partida.txt')
+            )
 
     cartones_csv = _resolver_path(cartones_txt)
     playlist_txt_path = _resolver_path(playlist_txt)
@@ -362,12 +400,24 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
 
     cartones = cargar_cartones(cartones_csv)
     playlist = cargar_playlist(playlist_txt_path)
-    simular_bingo(
-        cartones,
-        playlist,
-        canciones_por_carton=canciones_por_carton,
-        canciones_por_linea=canciones_por_linea,
-    )
+    if guardar_log_txt and ruta_log_txt is not None:
+        ruta_log_txt.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta_log_txt, 'w', encoding='utf-8', newline='\n') as f_log:
+            with redirect_stdout(_TeeOutput(sys.stdout, f_log)):
+                simular_bingo(
+                    cartones,
+                    playlist,
+                    canciones_por_carton=canciones_por_carton,
+                    canciones_por_linea=canciones_por_linea,
+                )
+        print(f'Resultado de simulacion guardado en: {ruta_log_txt}')
+    else:
+        simular_bingo(
+            cartones,
+            playlist,
+            canciones_por_carton=canciones_por_carton,
+            canciones_por_linea=canciones_por_linea,
+        )
 
     if interactivo:
         _confirmar_guardar_valores(
@@ -377,6 +427,8 @@ def _simular_partida(config, config_path, interactivo=True, cartones_forzados=No
                 'simulator_playlist_txt': _ruta_relativa(playlist_txt_path),
                 'simulator_canciones_por_carton': int(canciones_por_carton),
                 'simulator_canciones_por_linea': int(canciones_por_linea),
+                'simulator_guardar_log_txt': bool(guardar_log_txt),
+                'simulator_log_output_txt': _ruta_relativa(ruta_log_txt) if ruta_log_txt else config.get('simulator_log_output_txt', 'data/outputs/simulacion_partida.txt'),
             },
             config_path,
         )
@@ -454,6 +506,18 @@ def _editar_configuracion(config, config_path):
     cambios['simulator_canciones_por_linea'] = _pedir_entero(
         'Simulador canciones para linea',
         int(config['simulator_canciones_por_linea']),
+    )
+    cambios['simulator_guardar_log_txt'] = _pedir_bool(
+        'Simulador guardar resultado en TXT',
+        bool(config.get('simulator_guardar_log_txt', False)),
+    )
+    cambios['simulator_log_output_txt'] = _ruta_relativa(
+        _resolver_path(
+            _pedir_texto(
+                'Simulador ruta TXT de resultado',
+                config.get('simulator_log_output_txt', 'data/outputs/simulacion_partida.txt'),
+            )
+        )
     )
 
     config.update(cambios)
