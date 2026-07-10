@@ -3,9 +3,9 @@
 Proyecto para preparar bingos musicales de principio a fin:
 
 1. Exportar una playlist de Spotify en CSV (Exportify).
-2. Convertir ese CSV a TXT con un titulo por linea.
-3. Generar cartones optimizados en CSV.
-4. Simular partidas en consola.
+2. Convertir ese CSV a TXT con un titulo por linea y limpieza opcional de metadatos.
+3. Generar cartones optimizados en CSV, incluyendo optimizacion por simulacion.
+4. Simular partidas en consola, con control de linea y opcion de guardar el log en TXT.
 5. Renderizar cartones visuales en Google Sheets para imprimir.
 
 ## Estructura
@@ -48,6 +48,8 @@ Desde ahi puedes:
 4. Simular partida.
 5. Ver/editar/restablecer configuracion.
 
+En la simulacion desde menu puedes guardar el resultado completo en un archivo TXT sin perder la salida por terminal.
+
 El menu guarda tu configuracion local en `bingo_config.json` (archivo ignorado por Git).
 La plantilla versionada del repo esta en [bingo_config.example.json](bingo_config.example.json).
 
@@ -68,6 +70,14 @@ python exportify_to_txt.py --entrada-csv "data/inputs/BINGO_RONDA_1.csv" --salid
 ```
 
 Este script extrae la columna `Track Name` y genera un TXT con un titulo por linea.
+Por defecto limpia metadatos frecuentes del nombre, por ejemplo:
+
+- `feat.` y `ft.`
+- sufijos tipo `- Spanish Version`
+- bloques tipo `- Official Video`, `- Live`, `- Remastered`
+- textos tipo `From 'Movie' Soundtrack`
+
+Si quieres conservar el titulo exacto del CSV, usa `--no-limpiar`.
 
 ### 3) Generar cartones optimizados
 
@@ -75,11 +85,21 @@ Este script extrae la columna `Track Name` y genera un TXT con un titulo por lin
 python generador_csv_cartones.py --entrada data/inputs/canciones_ronda_1.txt --salida data/outputs/cartones_ronda_1.csv --num-cartones 100 --canciones-por-carton 12 --max-coincidencias 3
 ```
 
+Tambien puedes activar optimizacion por simulacion usando la playlist como referencia:
+
+```bash
+python generador_csv_cartones.py --entrada data/inputs/canciones_ronda_1.txt --salida data/outputs/cartones_ronda_1.csv --num-cartones 100 --canciones-por-carton 12 --max-coincidencias 3 --playlist-referencia data/inputs/canciones_ronda_1.txt --canciones-por-linea 4 --intentos-optimizacion 120
+```
+
+Este modo intenta reducir premios simultaneos de linea y bingo comparando varias cartorneras candidatas.
+
 ### 4) Simular la partida
 
 ```bash
-python simulador_partidas.py --cartones data/outputs/cartones_ronda_1.csv --playlist data/inputs/canciones_ronda_1.txt --canciones-por-carton 12
+python simulador_partidas.py --cartones data/outputs/cartones_ronda_1.csv --playlist data/inputs/canciones_ronda_1.txt --canciones-por-carton 12 --canciones-por-linea 4
 ```
+
+La simulacion detecta lineas y bingos, y en el menu interactivo puedes guardar todo el resultado a un TXT.
 
 ### 5) Pasar los cartones a formato visual (Google Sheets)
 
@@ -130,6 +150,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 - `--salida-txt`: ruta del TXT de salida.
 - `--columna`: columna de donde leer el titulo (por defecto `Track Name`).
 - `--unicos`: elimina repetidos conservando orden.
+- `--no-limpiar`: conserva el titulo exacto sin quitar metadatos como `feat.`, `version`, `live` o `official`.
 
 ### generador_csv_cartones.py
 
@@ -139,16 +160,23 @@ python -m unittest discover -s tests -p "test_*.py" -v
 - `--canciones-por-carton`: canciones por carton.
 - `--max-coincidencias`: limite de coincidencias entre cartones.
 - `--seed`: semilla opcional para reproducibilidad.
+- `--playlist-referencia`: TXT usado para optimizar premios simultaneos.
+- `--canciones-por-linea`: umbral de linea usado en la optimizacion.
+- `--intentos-optimizacion`: numero de cartorneras candidatas a evaluar.
+- `--peso-linea-simultanea`: penalizacion de lineas simultaneas.
+- `--peso-bingo-simultaneo`: penalizacion de bingos simultaneos.
 
 ### simulador_partidas.py
 
 - `--cartones`: CSV con cartones.
 - `--playlist`: TXT con canciones a sonar.
 - `--canciones-por-carton`: canciones esperadas por carton.
+- `--canciones-por-linea`: canciones necesarias para cantar linea.
 
 ## Notas
 
 - Si la config del generador es muy exigente, puede devolver menos cartones de los pedidos.
+- La optimizacion por simulacion mejora algunos casos, pero conviene calibrar `--intentos-optimizacion` y los pesos con tus playlists reales.
 - Licencia del proyecto: MIT (ver archivo LICENSE).
 
 ## Presets Recomendados
@@ -176,3 +204,7 @@ Para rondas grandes (150 cartones o mas), empieza por el preset conservador.
 - El simulador termina demasiado pronto:
   - Incrementa `--canciones-por-carton`.
   - Reduce `--max-coincidencias` al generar cartones.
+- La simulacion produce demasiadas lineas simultaneas:
+  - Prueba generacion con `--playlist-referencia` y `--intentos-optimizacion` mas altos.
+  - Ajusta `--peso-linea-simultanea` para penalizar mas esos casos.
+  - Revisa el log TXT de la simulacion desde el menu para ver en que minuto se concentran los premios.
